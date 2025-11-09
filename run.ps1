@@ -43,12 +43,24 @@ if (Test-Path $dockerComposeFile) {
 Write-Host "Preparing entrypoint.sh for Linux container..." -ForegroundColor Green
 $entrypointFile = "$DESTINATION\entrypoint.sh"
 if (Test-Path $entrypointFile) {
-    # Convert CRLF to LF for Linux compatibility
-    $content = Get-Content $entrypointFile -Raw
+    # Read file as binary to preserve content, then convert line endings
+    $bytes = [System.IO.File]::ReadAllBytes($entrypointFile)
+    $content = [System.Text.Encoding]::UTF8.GetString($bytes)
+    
+    # Remove BOM if present
+    if ($content.StartsWith([char]0xFEFF)) {
+        $content = $content.Substring(1)
+    }
+    
+    # Convert all Windows line endings to Unix (LF only)
     $content = $content -replace "`r`n", "`n"
     $content = $content -replace "`r", "`n"
-    [System.IO.File]::WriteAllText($entrypointFile, $content, [System.Text.Encoding]::UTF8)
-    Write-Host "entrypoint.sh prepared with Unix line endings" -ForegroundColor Green
+    
+    # Write file without BOM, with Unix line endings (LF)
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($entrypointFile, $content, $utf8NoBom)
+    
+    Write-Host "entrypoint.sh prepared with Unix line endings (LF, no BOM)" -ForegroundColor Green
 } else {
     Write-Host "Warning: entrypoint.sh not found in cloned repository!" -ForegroundColor Yellow
     Write-Host "The docker-compose.yml expects entrypoint.sh to exist." -ForegroundColor Yellow

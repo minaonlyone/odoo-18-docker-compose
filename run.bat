@@ -58,9 +58,9 @@ REM Ensure entrypoint.sh exists and has Unix line endings (LF) for Linux contain
 echo Preparing entrypoint.sh for Linux container...
 set ENTRYPOINT_FILE=%DESTINATION%\entrypoint.sh
 if exist "%ENTRYPOINT_FILE%" (
-    REM Convert CRLF to LF for Linux compatibility using PowerShell
-    powershell -Command "$content = Get-Content '%ENTRYPOINT_FILE%' -Raw; $content = $content -replace \"`r`n\", \"`n\"; $content = $content -replace \"`r\", \"`n\"; [System.IO.File]::WriteAllText('%ENTRYPOINT_FILE%', $content, [System.Text.Encoding]::UTF8)"
-    echo entrypoint.sh prepared with Unix line endings
+    REM Convert CRLF to LF and remove BOM for Linux compatibility using PowerShell
+    powershell -Command "$bytes = [System.IO.File]::ReadAllBytes('%ENTRYPOINT_FILE%'); $content = [System.Text.Encoding]::UTF8.GetString($bytes); if ($content.StartsWith([char]0xFEFF)) { $content = $content.Substring(1) }; $content = $content -replace \"`r`n\", \"`n\"; $content = $content -replace \"`r\", \"`n\"; $utf8NoBom = New-Object System.Text.UTF8Encoding $false; [System.IO.File]::WriteAllText('%ENTRYPOINT_FILE%', $content, $utf8NoBom)"
+    echo entrypoint.sh prepared with Unix line endings (LF, no BOM)
 ) else (
     echo Warning: entrypoint.sh not found in cloned repository!
     echo The docker-compose.yml expects entrypoint.sh to exist.
